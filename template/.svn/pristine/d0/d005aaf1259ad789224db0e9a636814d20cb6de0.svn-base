@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.jenkins-ci.plugins</groupId>
+		<artifactId>plugin</artifactId>
+		<version>2.11</version>
+		<relativePath />
+	</parent>
+	<groupId>com.nagarro.devops-jenkins.plugin</groupId>
+	<artifactId>jenkins-workflow</artifactId>
+	<version>1.0.0-SNAPSHOT</version>
+	<packaging>hpi</packaging>
+	<organization>
+		<name>Nagarro</name>
+		<url>http://www.nagarro.com/</url>
+	</organization>
+	<properties>
+		<jenkins.version>1.625.3</jenkins.version>
+		<java.level>8</java.level>
+	</properties>
+
+	<!-- <name>Automatic_Jenkins_Job_Processing_Plugin</name> -->
+	<name>jenkins-workflow</name>
+	<description>This is the com.nagarro.devops.jenkins.plugin: jenkins-plugin plugin for Jenkins server</description>
+	<url>https://wiki.jenkins-ci.org/display/JENKINS/Template</url>
+
+	<!-- The default licence for Jenkins OSS Plugins is MIT. Substitute for 
+		the applicable one if needed. -->
+
+	<licenses>
+		<license>
+			<name>MIT License</name>
+			<url>http://opensource.org/licenses/MIT</url>
+		</license>
+	</licenses>
+
+	<!-- <build> <plugins> <plugin> <groupId>org.codehaus.mojo</groupId> <artifactId>findbugs-maven-plugin</artifactId> 
+		<executions> <execution> <phase>none</phase> </execution> </executions> </plugin> 
+		</plugins> </build> -->
+
+
+	<!-- Assuming you want to host on @jenkinsci: <scm> <connection>scm:git:git://github.com/jenkinsci/${project.artifactId}-plugin.git</connection> 
+		<developerConnection>scm:git:git@github.com:jenkinsci/${project.artifactId}-plugin.git</developerConnection> 
+		<url>https://github.com/jenkinsci/${project.artifactId}-plugin</url> </scm> -->
+
+	<repositories>
+		<repository>
+			<id>repo.jenkins-ci.org</id>
+			<url>https://repo.jenkins-ci.org/public/</url>
+		</repository>
+	</repositories>
+	<pluginRepositories>
+		<pluginRepository>
+			<id>repo.jenkins-ci.org</id>
+			<url>https://repo.jenkins-ci.org/public/</url>
+		</pluginRepository>
+	</pluginRepositories>
+
+	<!-- If you want to depend on other plugins: <dependencies> <dependency> 
+		<groupId>org.jenkins-ci.plugins</groupId> <artifactId>credentials</artifactId> 
+		<version>2.0</version> </dependency> </dependencies> -->
+	<!-- https://mvnrepository.com/artifact/org.tmatesoft.svnkit/svnkit -->
+
+	<dependencies>
+		<dependency>
+			<groupId>org.tmatesoft.svnkit</groupId>
+			<artifactId>svnkit</artifactId>
+			<version>1.2.3.5521</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.eclipse.jgit/org.eclipse.jgit -->
+		<dependency>
+			<groupId>org.eclipse.jgit</groupId>
+			<artifactId>org.eclipse.jgit</artifactId>
+			<version>4.5.1.201703201650-r</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/com.mashape.unirest/unirest-java -->
+		<dependency>
+			<groupId>com.mashape.unirest</groupId>
+			<artifactId>unirest-java</artifactId>
+			<version>1.4.9</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/com.google.code.gson/gson -->
+		<dependency>
+			<groupId>com.google.code.gson</groupId>
+			<artifactId>gson</artifactId>
+			<version>2.8.0</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient -->
+		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpclient</artifactId>
+			<version>4.5.3</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.apache.httpcomponents/httpcore -->
+		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpcore</artifactId>
+			<version>4.4.6</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/javax.ws.rs/javax.ws.rs-api -->
+		<dependency>
+			<groupId>javax.ws.rs</groupId>
+			<artifactId>javax.ws.rs-api</artifactId>
+			<version>2.1</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.jvnet.hudson.plugins/email-ext -->
+		<dependency>
+			<groupId>org.jvnet.hudson.plugins</groupId>
+			<artifactId>email-ext</artifactId>
+			<version>2.10</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.jvnet.hudson.plugins/sonar -->
+		<dependency>
+			<groupId>org.jvnet.hudson.plugins</groupId>
+			<artifactId>sonar</artifactId>
+			<version>2.0.1</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.apache.velocity/velocity -->
+		<dependency>
+			<groupId>org.apache.velocity</groupId>
+			<artifactId>velocity</artifactId>
+			<version>1.7</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.sun.mail</groupId>
+			<artifactId>javax.mail</artifactId>
+			<version>1.5.5</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.json</groupId>
+			<artifactId>json</artifactId>
+			<version>20160807</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/log4j/log4j -->
+		<dependency>
+			<groupId>log4j</groupId>
+			<artifactId>log4j</artifactId>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.jasypt/jasypt -->
+		<dependency>
+			<groupId>org.jasypt</groupId>
+			<artifactId>jasypt</artifactId>
+			<version>1.9.2</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.gitlab4j/gitlab4j-api -->
+		<dependency>
+			<groupId>org.gitlab4j</groupId>
+			<artifactId>gitlab4j-api</artifactId>
+			<version>4.7.14</version>
+		</dependency>
+	</dependencies>
+</project>

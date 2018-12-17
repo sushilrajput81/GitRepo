@@ -1,0 +1,77 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<jenkins-jobs>
+	<jenkins-job>
+		<template>BASIC-JAVA</template>
+		<build>
+			<property>
+				<name>command</name>
+				<value>install</value>
+			</property>
+			<property>
+				<name>shellCommand</name>
+				<value>echo "BASIC-JAVA"</value>
+			</property>
+			<property>
+				<name>labelExpr</name>
+				<value>master</value>
+			</property>
+			<property>
+				<name>jobSchedule</name>
+				<value>1 23 * *</value>
+			</property>
+			<property>
+				<name>buildType</name>
+				<value>maven</value>
+			</property>
+			<!-- for GIT VCS -->
+			<property>
+				<name>gitBranchName</name>
+				<value>master</value>
+			</property>
+		</build>
+			
+		<sonar>
+			<property>
+				<name>sonarBranchName</name>
+				<value></value>
+			</property>	
+			<property>
+				<name>sonarSources</name>
+				<value></value>
+			</property>
+			<!-- for dotnet projects -->
+			<property>
+				<name>projectKey</name>
+				<value></value>
+			</property>	
+			<property>
+				<name>projectName</name>
+				<value></value>
+			</property>
+			<property>
+				<name>projectVersion</name>
+				<value></value>
+			</property>	
+		</sonar>	
+			
+		<email>
+			<property>
+				<name>recipients</name>
+				<value>abc@xyz.com</value>
+				<value>def@xyz.com</value>
+			</property>	
+			<property>
+				<name>subject</name>
+				<value>test mail</value>
+			</property>	
+			<property>
+				<name>body</name>
+				<value>testing email</value>
+			</property>	
+			<property>
+				<name>whetherToAttachBuildLog</name>
+				<value>no</value>
+			</property>	
+		</email>	
+	</jenkins-job>
+</jenkins-jobs>

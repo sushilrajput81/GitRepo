@@ -1,0 +1,132 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+	<actions />
+	<description>$DESC</description>
+	<properties>
+		<jenkins.model.BuildDiscarderProperty>
+			<strategy class="hudson.tasks.LogRotator">
+				<daysToKeep>$DAYS_TO_KEEP</daysToKeep>
+				<numToKeep>$NUM_TO_KEEP</numToKeep>
+				<artifactDaysToKeep>$ARTIFACT_DAYS_TO_KEEP</artifactDaysToKeep>
+				<artifactNumToKeep>$ARTIFACT_NUM_TO_KEEP</artifactNumToKeep>
+			</strategy>
+		</jenkins.model.BuildDiscarderProperty>
+	</properties>
+	<scm class="hudson.scm.SubversionSCM" plugin="subversion@2.6">
+		<locations>
+			<hudson.scm.SubversionSCM_-ModuleLocation>
+				<remote>$REPO</remote>
+				<credentialsId>$CREDS_ID</credentialsId>
+				<local>$LOCAL</local>
+				<depthOption>$DEPTH_OPTION</depthOption>
+				<ignoreExternalsOption>true</ignoreExternalsOption>
+			</hudson.scm.SubversionSCM_-ModuleLocation>
+		</locations>
+	</scm>
+	<disabled>false</disabled>
+	<assignedNode>$LABEL_EXPR_DOTNET</assignedNode>
+	<jdk>$JDK_DOTNET</jdk>
+	<triggers>
+		<hudson.triggers.SCMTrigger>
+			<spec>$SPEC</spec>
+			<ignorePostCommitHooks>false</ignorePostCommitHooks>
+		</hudson.triggers.SCMTrigger>
+	</triggers>
+	<builders>
+		<hudson.tasks.BatchFile>
+			<command>$COMMAND</command>
+		</hudson.tasks.BatchFile>
+		<hudson.plugins.msbuild.MsBuildBuilder
+			plugin="$MSBUILD_VERSION">
+			<msBuildName>$MSBUILD_NAME</msBuildName>
+			<msBuildFile>$MSBUILD_FILE</msBuildFile>
+			<cmdLineArgs>$CMD_LINE_ARGS</cmdLineArgs>
+			<buildVariablesAsProperties>false</buildVariablesAsProperties>
+			<continueOnBuildFailure>false</continueOnBuildFailure>
+			<unstableIfWarnings>false</unstableIfWarnings>
+		</hudson.plugins.msbuild.MsBuildBuilder>
+		<hudson.tasks.BatchFile>
+			<command>$TEST_EXECUTION_COMMAND</command>
+		</hudson.tasks.BatchFile>
+		<hudson.plugins.sonar.MsBuildSQRunnerBegin
+			plugin="$SONAR_VERSION">
+			<sonarInstallationName>$SONAR_INSTALLATION_NAME</sonarInstallationName>
+			<projectKey>$JOB_NAME</projectKey>
+			<projectName>$JOB_NAME</projectName>
+			<projectVersion>$SONAR_PROJECT_VERSION</projectVersion>
+			<additionalArguments>$SONAR_ADDITIONAL_ARGUMENTS
+			</additionalArguments>
+		</hudson.plugins.sonar.MsBuildSQRunnerBegin>
+		<hudson.tasks.BatchFile>
+			<command>$SONAR_COMMAND</command>
+		</hudson.tasks.BatchFile>
+		<hudson.plugins.sonar.MsBuildSQRunnerEnd
+			plugin="$SONAR_VERSION" />
+	</builders>
+	<publishers>
+		<info.bluefloyd.jenkins.IssueUpdaterResultsRecorder
+			plugin="$JIRA_PLUGIN_VERSION">
+			<restAPIUrl>$REST_API_URL</restAPIUrl>
+			<userName>$USERNAME</userName>
+			<password>$PASSWORD</password>
+			<jql>Project=$PROJECTNAME AND id = $TICKETID</jql>
+			<workflowActionName></workflowActionName>
+			<comment>$COMMENT</comment>
+			<customFieldId></customFieldId>
+			<customFieldValue></customFieldValue>
+			<resettingFixedVersions>false</resettingFixedVersions>
+			<createNonExistingFixedVersions>false</createNonExistingFixedVersions>
+			<failIfJqlFails>false</failIfJqlFails>
+			<failIfNoIssuesReturned>false</failIfNoIssuesReturned>
+			<failIfNoJiraConnection>true</failIfNoJiraConnection>
+		</info.bluefloyd.jenkins.IssueUpdaterResultsRecorder>
+		<hudson.plugins.emailext.ExtendedEmailPublisher
+			plugin="$EMAIL_PLUGIN_VERSION">
+			<recipientList>$DEFAULT_RECIPIENTS</recipientList>
+			<configuredTriggers>
+				<hudson.plugins.emailext.plugins.trigger.FailureTrigger>
+					<email>
+						<recipientList>$DEFAULT_RECIPIENTS</recipientList>
+						<subject>$PROJECT_DEFAULT_SUBJECT</subject>
+						<body>$PROJECT_DEFAULT_CONTENT</body>
+						<recipientProviders>
+							<hudson.plugins.emailext.plugins.recipients.ListRecipientProvider />
+						</recipientProviders>
+						<attachmentsPattern></attachmentsPattern>
+						<attachBuildLog>false</attachBuildLog>
+						<compressBuildLog>false</compressBuildLog>
+						<replyTo>$PROJECT_DEFAULT_REPLYTO</replyTo>
+						<contentType>$EMAIL_CONTENT_TYPE</contentType>
+					</email>
+				</hudson.plugins.emailext.plugins.trigger.FailureTrigger>
+				<hudson.plugins.emailext.plugins.trigger.SuccessTrigger>
+					<email>
+						<recipientList>$DEFAULT_RECIPIENTS</recipientList>
+						<subject>$PROJECT_DEFAULT_SUBJECT</subject>
+						<body>$PROJECT_DEFAULT_CONTENT</body>
+						<recipientProviders>
+							<hudson.plugins.emailext.plugins.recipients.ListRecipientProvider />
+						</recipientProviders>
+						<attachmentsPattern></attachmentsPattern>
+						<attachBuildLog>false</attachBuildLog>
+						<compressBuildLog>false</compressBuildLog>
+						<replyTo>$PROJECT_DEFAULT_REPLYTO</replyTo>
+						<contentType>$EMAIL_CONTENT_TYPE</contentType>
+					</email>
+				</hudson.plugins.emailext.plugins.trigger.SuccessTrigger>
+			</configuredTriggers>
+			<contentType>$EMAIL_CONTENT_TYPE</contentType>
+			//can keep diff for default
+			<defaultSubject>$DEFAULT_SUBJECT</defaultSubject>
+			<defaultContent>$DEFAULT_CONTENT</defaultContent>
+			<attachmentsPattern></attachmentsPattern>
+			<presendScript>$DEFAULT_PRESEND_SCRIPT</presendScript>
+			<attachBuildLog>false</attachBuildLog>
+			<compressBuildLog>false</compressBuildLog>
+			<replyTo>$DEFAULT_REPLYTO</replyTo>
+			<saveOutput>false</saveOutput>
+			<disabled>false</disabled>
+		</hudson.plugins.emailext.ExtendedEmailPublisher>
+	</publishers>
+	<buildWrappers />
+</project>

@@ -1,0 +1,141 @@
+#!groovy
+/*********************************************************************
+***** Description :: This template is used to setup Pipeline *****
+* *** Author :: Ravindra Mittal ( ravindra.mittal@nagarro.com) *******
+***** Date        :: 08/23/2017                                  *****
+***** Revision    :: 1.0                                       *****
+**********************************************************************/  
+import hudson.model.*
+import hudson.EnvVars
+import groovy.json.*
+import java.net.URL
+
+
+/***********************************************************************************************************************************************
+***        List of Paramters, change all paramters here.
+************************************************************************************************************************************************/
+JAVA_PATH='$JDK_DOTNET'
+GIT_CREDENTIALS_ID='$GIT_CREDS_ID'
+GIT_URL='$GIT_REPO'
+GIT_BRANCH='$GIT_BRANCH'
+SVN_URL='$SVN_REPO'
+SVN_CREDENTIALS_ID='$SVN_CREDS_ID'
+def NODE_NAME='$LABEL_EXPR_DOTNET'
+def EMAIL_ID='$DEFAULT_RECIPIENTS'
+env.NUGET_PATH='$NUGET_PATH'
+env.SLN_FILENAME='$SLN_FILENAME'
+env.MSBUILD_PATH='$MSBUILD_PATH'
+env.COVERAGE_FILE_NAME='$COVERAGE_FILE_NAME'
+env.SONAR_SCANNER_EXE='$SONAR_SCANNER_EXE'
+env.SONAR_SCANNER_PATH='$SONAR_SCANNER_PATH'
+env.SONAR_PROJECT_KEY='$SONAR_PROJECT_KEY'
+env.SONAR_PROJECT_NAME='$SONAR_PROJECT_NAME'
+env.VS_REPORT_PATH='$VS_REPORT_PATH'
+env.VS_REPORT_FILENAME='$VS_REPORT_FILENAME'
+env.OC_REPORT_PATH='$OC_REPORT_PATH'
+env.OC_REPORT_FILENAME='$OC_REPORT_FILENAME'
+SCM='$SCM'
+JIRA_COMMENT='$COMMENT'
+ISSUE_ID='$ISSUE_ID'
+JIRA_SITE='$JIRA_SITE'
+ScannerMsBuildHome='$SONAR_BUILD_HOME' 
+SonarQubeEnv ='$SONAR_INTEGRATION' 
+/*************************************************
+***** Function to checkout the code from SVN *****
+**************************************************/
+
+ 
+def  funCodeCheckoutGit()
+{
+ echo  "\u2600 **********GIT Code Checkout Stage Begins*******"
+checkout([$class: 'GitSCM', branches: [[name: "*/$GIT_BRANCH"]], doGenerateSubmoduleConfigurations: false, extensions: [], gitTool: 'Default', submoduleCfg: [], userRemoteConfigs: [[credentialsId: "$GIT_CREDENTIALS_ID", url: "$GIT_URL"]]])
+}
+
+def  funCodeCheckoutSvn()
+{
+echo  "\u2600 **********SVN Code Checkout Stage Begins*******"
+checkout([$class: 'SubversionSCM', additionalCredentials: [], excludedCommitMessages: '', excludedRegions: '', excludedRevprop: '', excludedUsers: '', filterChangelog: false, ignoreDirPropChanges: false, includedRegions: '', locations: [[credentialsId: "$SVN_CREDENTIALS_ID", depthOption: 'infinity', ignoreExternalsOption: true, local: '.', remote: "$SVN_URL"]], workspaceUpdater: [$class: 'UpdateUpdater']])
+
+}
+
+/*************************************************
+***** Function to comile and build code *****
+**************************************************/
+
+def  funCodeBuild()
+{
+ echo  "\u2600 **********Build started for FLDC Visual Studio Project******************"
+ bat '"%NUGET_PATH%/NuGet.exe" restore "%SLN_FILENAME%"'
+ bat 'MsBuild.exe %SLN_FILENAME%' 
+ }
+
+/*************************************************
+***** Function to run Unit test cases*****
+**************************************************/
+
+def  funUnitTest()
+{
+ echo  "\u2600 **********Running unit test cases******************"
+ bat '%COVERAGE_FILE_NAME% >> utest.log'
+ bat 'type utest.log'
+ archiveArtifacts allowEmptyArchive: true, artifacts: 'utest.log', excludes: null
+}
+
+/*************************************************
+***** Function to run Sonar Analysis*****
+**************************************************/
+ 
+def  funSonarAnalysis()
+{
+ echo  "\u2600 **********Running Sonar analysis and checking quality gates******************"
+ def sqScannerMsBuildHome = tool "${ScannerMsBuildHome}"
+    withSonarQubeEnv("${SonarQubeEnv}") {
+      bat "${sqScannerMsBuildHome}\\SonarQube.Scanner.MSBuild.exe begin /k:%SONAR_PROJECT_KEY% /n:%SONAR_PROJECT_NAME% /v:1.0 /d:sonar.cs.opencover.reportsPaths=%OC_REPORT_PATH%\\%OC_REPORT_FILENAME% /d:sonar.cs.vstest.reportsPaths=%VS_REPORT_PATH%\\%VS_REPORT_FILENAME%"
+      bat '"%MSBUILD_PATH%\\MSBuild.exe" /t:Rebuild'
+      bat "${sqScannerMsBuildHome}\\SonarQube.Scanner.MSBuild.exe end"
+    }
+}
+
+def funJiraIssueUpdate()
+{
+echo  "\u2600 **********JIRA ISSUE UPDATING*****************" 
+jiraAddComment comment: "${JIRA_COMMENT}", failOnError: false, idOrKey: "${ISSUE_ID}", site: "${JIRA_SITE}"
+}
+/********************************************************
+*****             Main pipeline stages              *****
+*********************************************************/
+
+node("$NODE_NAME") {
+   def JAVA_HOME = tool "$JAVA_PATH"
+   env.JAVA_HOME = "$JAVA_HOME"
+   env.PATH = "${env.JAVA_HOME}/bin:${env.PATH}"
+      try {
+  stage '\u2780 Code Checkout from SVN' 
+   if (SCM == 'SVN') 
+    {
+        funCodeCheckoutSvn()
+    }
+if (SCM =='GIT') 
+    {
+         funCodeCheckoutGit()
+    }
+   stage '\u2781 Code Build for Visual Studio Project' 
+   funCodeBuild()
+   stage '\u2782 Running Unit Test Cases'
+   funUnitTest ()
+   stage '\u2783 Executing Code Review' 
+   funSonarAnalysis()
+   stage 'JIRA UPATION'
+   funJiraIssueUpdate()
+   currentBuild.result = 'SUCCESS' 
+   }
+   catch (any) {
+        currentBuild.result = 'FAILURE'
+        throw any //rethrow exception to prevent the build from proceeding
+    } finally {
+        emailext body: """<p>Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p><p>Check console output at "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BUILD_NUMBER}]</a>"</p>""", mimeType: 'text/html', replyTo: '$DEFAULT_REPLYTO', subject: "Job '${env.JOB_NAME} - Build # [${env.BUILD_NUMBER}]", to: "$EMAIL_ID"
+    }
+    } 
+ 
+ 
+ 

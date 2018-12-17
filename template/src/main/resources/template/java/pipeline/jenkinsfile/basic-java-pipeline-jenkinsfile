@@ -1,0 +1,209 @@
+#!groovy
+
+/*********************************************************************
+***** Description :: This template is used to setup Pipeline *****
+* *** Author :: Ravindra Mittal ( ravindra.mittal@nagarro.com) *******
+***** Date        :: 08/23/2017                                  *****
+***** Revision    :: 1.0                                       *****
+**********************************************************************/  
+
+LABEL_EXPR='$LABEL_EXPR' 
+JAVA_HOME='$JDK' 
+MAVEN_PATH='$MAVEN_PATH' 
+ANT_PATH='$ANT_PATH' 
+GIT_CREDS_ID='$GIT_CREDS_ID' 
+GIT_REPO='$GIT_REPO' 
+GIT_BRANCH='$GIT_BRANCH'
+COMMAND='$COMMAND'
+SONAR_BRANCH='$SONAR_BRANCH'
+SONAR_URL='$SONAR_URL'
+DEFAULT_RECIPIENTS='$DEFAULT_RECIPIENTS'
+SVN_REPO='$SVN_REPO'
+SVN_CREDS_ID='$SVN_CREDS_ID'
+SCM='$SCM'
+BUILDTOOL='$BUILDTOOL'
+TARGET='$TARGET'
+COMMENT='$COMMENT'
+ISSUE_ID='$ISSUE_ID'
+JIRA_SITE='$JIRA_SITE'
+SONAR_INTEGRATION ='$SONAR_INTEGRATION' 
+ARTIFACTORY_NAME='$ARTIFACTORY_NAME'
+ARTIFACTORY_REPO='$ARTIFACTORY_REPO'
+BIND_PORT='$BIND_PORT'
+CLOUD_NAME='$CLOUD_NAME'
+IMAGE_NAME='$IMAGE_NAME'
+VOLUMES_STRING='$VOLUMES_STRING'
+SELENIUM_POM='$SELENIUM_POM'
+SELENIUM_TARGETS='$SELENIUM_TARGETS'
+SELENIUM_HOSTNAME='$SELENIUM_HOSTNAME'
+SELENIUM_PORT='$SELENIUM_PORT'
+SELENIUM_CONTEXT='$SELENIUM_CONTEXT'
+PERFORMANCE_MAVEN_TEST_RESULT='$PERFORMANCE_MAVEN_TEST_RESULT'
+PERFORMANCE_POM='$PERFORMANCE_POM'
+PERFORMANCE_TARGETS='$PERFORMANCE_TARGETS'
+PERFORMANCE_HOSTNAME='$PERFORMANCE_HOSTNAME'
+PERFORMANCE_PORT='$PERFORMANCE_PORT'
+PERFORMANCE_CONTEXT='$PERFORMANCE_CONTEXT'
+SELENIUM_FILENAME='$SELENIUM_FILENAME'
+SELENIUM_REPORTNAME='$SELENIUM_REPORTNAME'
+PERFORMANCE_FILENAME='$PERFORMANCE_FILENAME'
+PERFORMANCE_REPORTNAME='$PERFORMANCE_REPORTNAME'
+PORT = '$PORT'
+
+def  funCodeCheckoutGit()
+{ 
+ echo  "\u2600 **********GIT Code Checkout Stage Begins*******"
+checkout([$class: 'GitSCM', branches: [[name: "*/$GIT_BRANCH"]], doGenerateSubmoduleConfigurations: false, extensions: [], gitTool: 'Default', submoduleCfg: [], userRemoteConfigs: [[credentialsId: "$GIT_CREDS_ID", url: "$GIT_URL"]]])
+} 
+
+def  funCodeCheckoutSvn()
+{ 
+ echo  "\u2600 **********SVN Code Checkout Stage Begins*******" 
+checkout([$class: 'SubversionSCM', additionalCredentials: [], excludedCommitMessages: '', excludedRegions: '', excludedRevprop: '', excludedUsers: '', filterChangelog: false, ignoreDirPropChanges: false, includedRegions: '', locations: [[credentialsId: "$SVN_CREDS_ID", depthOption: 'infinity', ignoreExternalsOption: true, local: '.', remote: "$SVN_REPO"]], workspaceUpdater: [$class: 'UpdateUpdater']]) 
+} 
+
+def fununitTestMvn()
+{ 
+ echo  "\u2600 **********Running Unit test cases******************" 
+sh "${MAVEN_HOME}/bin/mvn test"
+}
+
+def funCodeBuildMvn()
+{ 
+ echo  "\u2600 **********Build started******************" 
+sh "${MAVEN_HOME}/bin/mvn ${COMMAND}"
+stash includes: 'target/*.war', name: 'warfile'
+} 
+
+def funCodeBuildAnt()
+{
+ echo  "\u2600 **********Build started******************" 
+sh "${ANT_HOME}/bin/ant ${TARGET}" 
+}
+
+def funSonarAnalysisMVN()
+{ 
+ echo  "\u2600 **********Sonar analysis started*****************" 
+withSonarQubeEnv("$SONAR_INTEGRATION") {
+     sh "${MAVEN_HOME}/bin/mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.2:sonar"
+    }
+} 
+def funJiraIssueUpdate()
+{
+echo  "\u2600 **********JIRA ISSUE UPDATING*****************" 
+jiraComment body: "${COMMENT}", issueKey: "${ISSUE_ID}"
+}
+
+def funartifactoryUpload()
+{
+echo  "\u2600 **********Uploading to artifactory*****************" 
+def server = Artifactory.server '$ARTIFACTORY_NAME'
+     def buildInfo = Artifactory.newBuildInfo()
+      buildInfo.env.capture = true
+      buildInfo.env.collect()
+      def rtMaven = Artifactory.newMavenBuild()
+      rtMaven.tool = '$MAVEN_PATH'
+      rtMaven.deployer releaseRepo:'$ARTIFACTORY_REPO', snapshotRepo:'$ARTIFACTORY_REPO', server: server
+    rtMaven.run pom: 'pom.xml', goals: 'clean install', buildInfo: buildInfo
+    buildInfo.retention maxBuilds: 10, maxDays: 7, deleteBuildArtifacts: true
+  // Publish build info.
+  server.publishBuildInfo buildInfo
+} 
+
+def funDockerContainerStop()
+{
+        sh '''
+        ContainerID=`docker ps | grep $PORT | cut -d " " -f 1`
+        if [ ! -z $ContainerID ]
+        then
+        docker stop $ContainerID
+        docker rm $ContainerID
+        fi
+        '''
+        unstash 'warfile'
+}
+
+def fundockercontRun(){
+step([$class: 'DockerBuilderControl', option: [$class: 'DockerBuilderControlOptionRun', bindAllPorts: false, bindPorts: "$BIND_PORT", cloudName: "$CLOUD_NAME", dnsString: '', dockerCommand: '', environmentsString: '', hostname: '', image: "$IMAGE_NAME", lxcConfString: '', macAddress: '', network: '', privileged: false, tty: false, volumesFrom: '', volumesString: "$WORKSPACE/target/$VOLUMES_STRING:/usr/local/tomcat/webapps/$VOLUMES_STRING"]])
+}
+def funseleniumTest(){
+sh "${MAVEN_HOME}/bin/mvn -f $SELENIUM_POM/pom.xml -Dhostname=$SELENIUM_HOSTNAME  -Dport=$SELENIUM_PORT -Dcontext=$SELENIUM_CONTEXT -Dmaven.test.failure.ignore=$PERFORMANCE_MAVEN_TEST_RESULT $SELENIUM_TARGETS"
+publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "$SELENIUM_POM/target/surefire-reports", reportFiles: "$SELENIUM_FILENAME", reportName: "$SELENIUM_REPORTNAME", reportTitles: ''])
+}
+
+def funperformanceTest() {
+sh "${MAVEN_HOME}/bin/mvn -f $PERFORMANCE_POM/pom.xml -Dhostname=$PERFORMANCE_HOSTNAME  -Dport=$PERFORMANCE_PORT -Dcontext=$PERFORMANCE_CONTEXT $PERFORMANCE_TARGETS"
+publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: true, reportDir: "$PERFORMANCE_POM/target/reports", reportFiles: "$PERFORMANCE_FILENAME", reportName: "PERFORMANCE_REPORTNAME", reportTitles: ''])
+}
+
+node("$LABEL_EXPR") {
+//JAVA_HOME = tool "$JDK" 
+MAVEN_HOME = tool "$MAVEN_PATH" 
+ANT_HOME = tool "$ANT_PATH" 
+env.PATH = "${env.JAVA_HOME}/bin:${env.MAVEN_HOME}/bin:${env.ANT_HOME}/bin:${env.PATH}" 
+try { 
+stage 'Checkout' 
+if (SCM == 'SVN') 
+    {
+      funCodeCheckoutSvn()
+    } 
+if (SCM =='GIT')
+    { 
+         funCodeCheckoutGit() 
+    } 
+stage 'Únit Test'
+if (BUILDTOOL == 'MVN')
+    {
+         fununitTestMvn()    
+    }    
+stage 'Build'
+if (BUILDTOOL == 'MVN')
+    {
+         funCodeBuildMvn()     
+    } 
+if (BUILDTOOL =='ANT') 
+    {
+         funCodeBuildAnt()
+    } 
+
+stage 'Sonar Analysis' 
+if (BUILDTOOL == 'MVN') 
+	{ 
+		funSonarAnalysisMVN() 
+	} 
+	stage 'Upload to artifactory'
+	funartifactoryUpload() 
+	 }
+        catch (any)
+        {
+        currentBuild.result = 'FAILURE'
+        throw any //rethrow exception to prevent the build from proceeding
+        }
+}
+
+node("Devops_POC_Linux")
+{
+stage 'Docker Deployment'
+funDockerContainerStop ()
+fundockercontRun()
+}
+
+node("$LABEL_EXPR") {
+//JAVA_HOME = tool "$JDK" 
+MAVEN_HOME = tool "$MAVEN_PATH" 
+ANT_HOME = tool "$ANT_PATH" 
+env.PATH = "${env.JAVA_HOME}/bin:${env.MAVEN_HOME}/bin:${env.ANT_HOME}/bin:${env.PATH}" 
+try { 
+stage 'Function Testing using Selenium'
+funseleniumTest()
+stage 'Performance Testing  using Jmeter'
+funperformanceTest()
+	stage 'JIRA UPATION'
+	funJiraIssueUpdate()
+} catch (any) { 
+        currentBuild.result = 'FAILURE' 
+        throw any //rethrow exception to prevent the build from proceeding 
+    } finally { 
+        emailext body: """<p>Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p><p>Check console output at "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BUILD_NUMBER}]</a>"</p>""", mimeType: 'text/html', replyTo: '$DEFAULT_REPLYTO', subject: "Job '${env.JOB_NAME} - Build # [${env.BUILD_NUMBER}]", to: '$DEFAULT_RECIPIENTS'  
+    } 
+}

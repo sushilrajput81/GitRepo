@@ -1,0 +1,101 @@
+#!groovy
+
+/*********************************************************************
+***** Description :: This template is used to setup Pipeline *****
+* *** Author :: Devops Team                                  *******
+***** Date        :: 08/23/2017                                  *****
+***** Revision    :: 1.0                                       *****
+**********************************************************************/
+
+NODE_NAME='Linux_Slave'
+JAVA_PATH='JDK_1.8'
+MAVEN_PATH='Maven3'
+MAVEN_GOALS='clean install -DskipTests=true  -Dfindbugs.skip=true'
+SONAR_BRANCH='master'
+SONAR_URL='http://10.127.127.91:9000'
+EMAIL_ID='charu.garg@nagarro.com'
+Dev_EMAIL_ID='saurabh01@nagarro.com'
+SVN_CREDENTIALS_ID='dsc-admin'
+SCM='SVN'
+TARGET='main'
+JIRA_COMMENT='Testing'
+ISSUE_ID='DEVOC-311'
+JIRA_SITE='jira-nagarro'
+SonarQubeEnv ='sonar_linux_slave'
+ARTIFACTORY_NAME='1508412728@1439723571527'
+
+
+def  funCodeCheckoutSvn()
+{
+ echo  "\u2600 **********SVN Code Checkout Stage Begins*******"
+checkout scm
+}
+
+def funCodeBuildMvn()
+{
+ echo  "\u2600 **********Build started******************"
+sh "${MAVEN_HOME}/bin/mvn ${MAVEN_GOALS}"
+}
+
+def funSonarAnalysisMVN()
+{
+ echo  "\u2600 **********Sonar analysis started*****************"
+withSonarQubeEnv("$SonarQubeEnv") {
+     sh 'mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.2:sonar'
+    }
+}
+
+def funartifactoryUpload()
+{
+echo  "\u2600 **********Uploading to artifactory*****************"
+def server = Artifactory.server '1508412728@1439723571527'
+     def buildInfo = Artifactory.newBuildInfo()
+      buildInfo.env.capture = true
+      buildInfo.env.collect()
+      def rtMaven = Artifactory.newMavenBuild()
+      rtMaven.tool = 'Maven3'
+      rtMaven.deployer releaseRepo:'devops', snapshotRepo:'devops', server: server
+    rtMaven.run pom: 'pom.xml', goals: 'clean install -DskipTests=true  -Dfindbugs.skip=true', buildInfo: buildInfo
+    buildInfo.retention maxBuilds: 10, maxDays: 7, deleteBuildArtifacts: true
+  // Publish build info.
+  server.publishBuildInfo buildInfo
+}
+
+def funcodeDeploy()
+{
+	sh 'sshpass -p "Ggn@12345" scp target/jenkins-workflow.hpi root@10.127.128.26:/home/scm_admin'
+	sh 'sshpass -p "Ggn@12345" ssh root@10.127.128.26  java -jar /home/scm_admin/jenkins-cli.jar -s http://10.127.128.26:9090/ install-plugin file:///home/scm_admin/jenkins-workflow.hpi -restart --username admin --password Ggn@12345'
+}
+
+def sendConfirmationMail()
+{
+	 emailext body: """<p>Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p><p>Please give confirmation for deployment "<a href="${env.JOB_URL}">${env.JOB_NAME}</a>"</p>""", mimeType: 'text/html', replyTo: '$DEFAULT_REPLYTO', subject: "Job '${env.JOB_NAME} - Confirmation # [${env.BUILD_NUMBER}]", to: "${Dev_EMAIL_ID}"
+}
+
+node("$NODE_NAME") {
+JAVA_HOME = tool "$JAVA_PATH"
+MAVEN_HOME = tool "Maven3"
+env.JAVA_HOME = "/opt/jdk1.8.0_66"
+env.MAVEN_HOME = "/data/admin/jenkins/tools/Maven3"
+env.PATH = "${env.JAVA_HOME}/bin:${env.MAVEN_HOME}/bin:${env.ANT_HOME}/bin:${env.PATH}"
+try {
+stage 'Checkout'
+		funCodeCheckoutSvn()
+stage 'Build'
+		funCodeBuildMvn()
+
+stage 'Sonar Analysis'
+		funSonarAnalysisMVN()
+stage 'Upload to artifactory'
+		funartifactoryUpload()
+		sendConfirmationMail()
+		input 'Pipeline has paused and needs your input before proceeding'
+stage 'Deploycode'
+		funcodeDeploy()
+} catch (any) {
+        currentBuild.result = 'FAILURE'
+        throw any //rethrow exception to prevent the build from proceeding
+    } finally {
+        emailext body: """<p>Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p><p>Check console output at "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BUILD_NUMBER}]</a>"</p>""", mimeType: 'text/html', replyTo: '$DEFAULT_REPLYTO', subject: "Job '${env.JOB_NAME} - Build # [${env.BUILD_NUMBER}]", to: "${EMAIL_ID}"
+    }
+	}
